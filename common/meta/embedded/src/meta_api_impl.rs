@@ -31,6 +31,8 @@ use common_meta_types::GetTableReq;
 use common_meta_types::ListDatabaseReq;
 use common_meta_types::ListTableReq;
 use common_meta_types::MetaId;
+use common_meta_types::RenameTableReply;
+use common_meta_types::RenameTableReq;
 use common_meta_types::TableIdent;
 use common_meta_types::TableInfo;
 use common_meta_types::TableMeta;
@@ -92,6 +94,11 @@ impl MetaApi for MetaEmbedded {
     ) -> Result<UpsertTableOptionReply> {
         let sm = self.inner.lock().await;
         sm.upsert_table_option(req).await
+    }
+
+    async fn rename_table(&self, req: RenameTableReq) -> Result<RenameTableReply> {
+        let sm = self.inner.lock().await;
+        sm.rename_table(req).await
     }
 
     fn name(&self) -> String {

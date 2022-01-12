@@ -57,13 +57,17 @@ pub struct ErrorCode {
     display_text: String,
     // cause is only used to contain an `anyhow::Error`.
     // TODO: remove `cause` when we completely get rid of `anyhow::Error`.
-    cause: Option<Box<dyn std::error::Error + Sync + Send>>,
+    cause: Option<anyhow::Error>,
     backtrace: Option<ErrorCodeBacktrace>,
 }
 
 impl ErrorCode {
     pub fn code(&self) -> u16 {
         self.code
+    }
+
+    pub fn cause(&self) -> Option<&anyhow::Error> {
+        self.cause.as_ref()
     }
 
     pub fn message(&self) -> String {
@@ -369,33 +373,12 @@ impl Display for ErrorCode {
     }
 }
 
-#[derive(Error)]
-enum OtherErrors {
-    AnyHow { error: anyhow::Error },
-}
-
-impl Display for OtherErrors {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OtherErrors::AnyHow { error } => write!(f, "{}", error),
-        }
-    }
-}
-
-impl Debug for OtherErrors {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OtherErrors::AnyHow { error } => write!(f, "{:?}", error),
-        }
-    }
-}
-
 impl From<anyhow::Error> for ErrorCode {
     fn from(error: anyhow::Error) -> Self {
         ErrorCode {
             code: 1002,
             display_text: format!("{}, source: {:?}", error, error.source()),
-            cause: Some(Box::new(OtherErrors::AnyHow { error })),
+            cause: Some(error),
             backtrace: Some(ErrorCodeBacktrace::Origin(Arc::new(Backtrace::new()))),
         }
     }
@@ -479,11 +462,17 @@ impl From<octocrab::Error> for ErrorCode {
     }
 }
 
-impl<T: Display> From<ConflictableTransactionError<T>> for ErrorCode {
+impl<T: Display + std::error::Error + Sync + Send + 'static> From<ConflictableTransactionError<T>>
+    for ErrorCode
+{
     fn from(error: ConflictableTransactionError<T>) -> Self {
         match error {
             ConflictableTransactionError::Abort(e) => {
-                ErrorCode::TransactionAbort(format!("Transaction abort, cause: {}", e))
+                let e = anyhow::Error::from(e);
+                let mut res =
+                    ErrorCode::TransactionAbort(format!("Transaction abort, cause: {}", e));
+                res.cause = Some(e);
+                res
             }
             ConflictableTransactionError::Storage(e) => {
                 ErrorCode::TransactionError(format!("Transaction storage error, cause: {}", e))
@@ -493,11 +482,17 @@ impl<T: Display> From<ConflictableTransactionError<T>> for ErrorCode {
     }
 }
 
-impl<E: Display> From<TransactionError<E>> for ErrorCode {
+impl<E: Display + std::error::Error + Sync + Send + 'static> From<TransactionError<E>>
+    for ErrorCode
+{
     fn from(error: TransactionError<E>) -> Self {
         match error {
             TransactionError::Abort(e) => {
-                ErrorCode::TransactionAbort(format!("Transaction abort, cause: {}", e))
+                let e = anyhow::Error::from(e);
+                let mut res =
+                    ErrorCode::TransactionAbort(format!("Transaction abort, cause: {}", e));
+                res.cause = Some(e);
+                res
             }
             TransactionError::Storage(e) => {
                 ErrorCode::TransactionError(format!("Transaction storage error, cause :{}", e))

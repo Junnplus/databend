@@ -293,7 +293,6 @@ impl StateMachine {
     fn apply_incr_seq_cmd(
         &self,
         key: &str,
-
         txn_tree: &TransactionSledTree,
     ) -> common_exception::Result<AppliedState> {
         let r = self.txn_incr_seq(key, txn_tree)?;
@@ -306,7 +305,6 @@ impl StateMachine {
         &self,
         node_id: &u64,
         node: &Node,
-
         txn_tree: &TransactionSledTree,
     ) -> common_exception::Result<AppliedState> {
         let sm_nodes = txn_tree.key_space::<Nodes>();
@@ -390,7 +388,6 @@ impl StateMachine {
         &self,
         tenant: &str,
         name: &str,
-
         txn_tree: &TransactionSledTree,
     ) -> common_exception::Result<AppliedState> {
         let dbs = txn_tree.key_space::<DatabaseLookup>();
@@ -441,57 +438,29 @@ impl StateMachine {
         db_name: &str,
         table_name: &str,
         table_meta: &TableMeta,
-
         txn_tree: &TransactionSledTree,
     ) -> common_exception::Result<AppliedState> {
         let db_id = self.txn_get_database_id(tenant, db_name, txn_tree)?;
 
-        let lookup_key = TableLookupKey {
-            database_id: db_id,
-            table_name: table_name.to_string(),
-        };
+        let (table_id, prev, result) =
+            self.txn_create_table(txn_tree, db_id, table_name, table_meta)?;
 
-        let table_lookup_tree = txn_tree.key_space::<TableLookup>();
-        let seq_table_id = table_lookup_tree.get(&lookup_key)?;
-
-        if let Some(u) = seq_table_id {
-            let table_id = u.data.0;
-
-            let prev = self.txn_get_table_meta_by_id(&table_id, txn_tree)?;
-
+        if prev.is_some() {
             return Ok(AppliedState::TableMeta(Change::nochange_with_id(
-                table_id, prev,
+                table_id.unwrap(),
+                prev,
             )));
         }
 
-        let table_meta = table_meta.clone();
-        let table_id = self.txn_incr_seq(SEQ_TABLE_ID, txn_tree)?;
-
-        self.sub_txn_tree_upsert(
-            &table_lookup_tree,
-            &lookup_key,
-            &MatchSeq::Exact(0),
-            Operation::Update(TableLookupValue(table_id)),
-            None,
-        )?;
-
-        let table_tree = txn_tree.key_space::<Tables>();
-        let (prev, result) = self.sub_txn_tree_upsert(
-            &table_tree,
-            &table_id,
-            &MatchSeq::Exact(0),
-            Operation::Update(table_meta),
-            None,
-        )?;
-
-        tracing::debug!("applied create Table: {}={:?}", table_name, result);
-
-        if prev.is_none() && result.is_some() {
+        if result.is_some() {
             self.txn_incr_seq(SEQ_DATABASE_META_ID, txn_tree)?;
         }
 
+        tracing::debug!("applied create Table: {}={:?}", table_name, result);
         Ok(AppliedState::TableMeta(Change::new_with_id(
-            table_id, prev, result,
+            table_id.unwrap(),
+            prev,
+            result,
         )))
     }
 
@@ -501,41 +470,60 @@ impl StateMachine {
         tenant: &str,
         db_name: &str,
         table_name: &str,
-
         txn_tree: &TransactionSledTree,
     ) -> common_exception::Result<AppliedState> {
         let db_id = self.txn_get_database_id(tenant, db_name, txn_tree)?;
 
-        let lookup_key = TableLookupKey {
-            database_id: db_id,
-            table_name: table_name.to_string(),
-        };
-
-        let table_lookup_tree = txn_tree.key_space::<TableLookup>();
-        let seq_table_id = table_lookup_tree.get(&lookup_key)?;
-
-        if seq_table_id.is_none() {
+        let (table_id, prev, result) = self.txn_drop_table(txn_tree, db_id, table_name)?;
+        if prev.is_none() {
             return Ok(Change::<TableMeta>::new(None, None).into());
         }
 
-        let table_id = seq_table_id.unwrap().data.0;
-
-        self.sub_txn_tree_upsert(
-            &table_lookup_tree,
-            &lookup_key,
-            &MatchSeq::Any,
-            Operation::Delete,
-            None,
-        )?;
-
-        let tables = txn_tree.key_space::<Tables>();
-        let (prev, result) =
-            self.sub_txn_tree_upsert(&tables, &table_id, &MatchSeq::Any, Operation::Delete, None)?;
-        if prev.is_some() && result.is_none() {
+        if result.is_none() {
             self.txn_incr_seq(SEQ_DATABASE_META_ID, txn_tree)?;
         }
         tracing::debug!("applied drop Table: {} {:?}", table_name, result);
-        Ok(Change::new_with_id(table_id, prev, result).into())
+        Ok(Change::new_with_id(table_id.unwrap(), prev, result).into())
+    }
+
+    #[tracing::instrument(level = "debug", skip(self, txn_tree))]
+    fn apply_rename_table_cmd(
+        &self,
+        tenant: &str,
+        db_name: &str,
+        table_name: &str,
+        new_table_name: &str,
+        txn_tree: &TransactionSledTree,
+    ) -> common_exception::Result<AppliedState> {
+        let db_id = self.txn_get_database_id(tenant, db_name, txn_tree)?;
+        let (_, prev, result) = self.txn_drop_table(txn_tree, db_id, table_name)?;
+        if prev.is_none() {
+            return Err(ErrorCode::UnknownTable(format!(
+                "Unknown table: '{:}'",
+                table_name
+            )));
+        }
+        assert!(result.is_none());
+
+        let table_meta = &prev.as_ref().unwrap().data;
+        let (new_table_id, new_prev, new_result) =
+            self.txn_create_table(txn_tree, db_id, new_table_name, table_meta)?;
+        if new_prev.is_some() {
+            return Err(ErrorCode::TableAlreadyExists(format!(
+                "Table already exists: '{:}'",
+                new_table_name
+            )));
+        }
+
+        if new_result.is_some() {
+            self.txn_incr_seq(SEQ_DATABASE_META_ID, txn_tree)?;
+        }
+        tracing::debug!("applied rename Table: {} -> {}", table_name, new_table_name);
+        Ok(AppliedState::TableMeta(Change::new_with_id(
+            new_table_id.unwrap(),
+            prev,
+            new_result,
+        )))
     }
 
     #[tracing::instrument(level = "debug", skip(self, txn_tree))]
@@ -565,7 +553,6 @@ impl StateMachine {
     fn apply_upsert_table_options_cmd(
         &self,
         req: &common_meta_types::UpsertTableOptionReq,
-
         txn_tree: &TransactionSledTree,
     ) -> common_exception::Result<AppliedState> {
         let table_tree = txn_tree.key_space::<Tables>();
@@ -654,6 +641,13 @@ impl StateMachine {
                 ref table_name,
             } => self.apply_drop_table_cmd(tenant, db_name, table_name, txn_tree),
 
+            Cmd::RenameTable {
+                ref tenant,
+                ref db_name,
+                ref table_name,
+                ref new_table_name,
+            } => self.apply_rename_table_cmd(tenant, db_name, table_name, new_table_name, txn_tree),
+
             Cmd::UpsertKV {
                 key,
                 seq,
@@ -663,6 +657,96 @@ impl StateMachine {
 
             Cmd::UpsertTableOptions(ref req) => self.apply_upsert_table_options_cmd(req, txn_tree),
         }
+    }
+
+    fn txn_create_table(
+        &self,
+        txn_tree: &TransactionSledTree,
+        db_id: u64,
+        table_name: &str,
+        table_meta: &TableMeta,
+    ) -> common_exception::Result<(
+        Option<u64>,
+        Option<SeqV<TableMeta>>,
+        Option<SeqV<TableMeta>>,
+    )> {
+        let lookup_key = TableLookupKey {
+            database_id: db_id,
+            table_name: table_name.to_string(),
+        };
+
+        let table_lookup_tree = txn_tree.key_space::<TableLookup>();
+        let seq_table_id = table_lookup_tree.get(&lookup_key)?;
+
+        if let Some(u) = seq_table_id {
+            let table_id = u.data.0;
+
+            let prev = self.txn_get_table_meta_by_id(&table_id, txn_tree)?;
+
+            return Ok((Some(table_id), prev, None));
+        }
+
+        let table_meta = table_meta.clone();
+        let table_id = self.txn_incr_seq(SEQ_TABLE_ID, txn_tree)?;
+
+        self.sub_txn_tree_upsert(
+            &table_lookup_tree,
+            &lookup_key,
+            &MatchSeq::Exact(0),
+            Operation::Update(TableLookupValue(table_id)),
+            None,
+        )?;
+
+        let table_tree = txn_tree.key_space::<Tables>();
+        let (prev, result) = self.sub_txn_tree_upsert(
+            &table_tree,
+            &table_id,
+            &MatchSeq::Exact(0),
+            Operation::Update(table_meta),
+            None,
+        )?;
+
+        tracing::debug!("applied create Table: {}={:?}", table_name, result);
+        Ok((Some(table_id), prev, result))
+    }
+
+    fn txn_drop_table(
+        &self,
+        txn_tree: &TransactionSledTree,
+        db_id: u64,
+        table_name: &str,
+    ) -> common_exception::Result<(
+        Option<u64>,
+        Option<SeqV<TableMeta>>,
+        Option<SeqV<TableMeta>>,
+    )> {
+        let lookup_key = TableLookupKey {
+            database_id: db_id,
+            table_name: table_name.to_string(),
+        };
+
+        let table_lookup_tree = txn_tree.key_space::<TableLookup>();
+        let seq_table_id = table_lookup_tree.get(&lookup_key)?;
+
+        if seq_table_id.is_none() {
+            return Ok((None, None, None));
+        }
+
+        let table_id = seq_table_id.unwrap().data.0;
+
+        self.sub_txn_tree_upsert(
+            &table_lookup_tree,
+            &lookup_key,
+            &MatchSeq::Any,
+            Operation::Delete,
+            None,
+        )?;
+
+        let tables = txn_tree.key_space::<Tables>();
+        let (prev, result) =
+            self.sub_txn_tree_upsert(&tables, &table_id, &MatchSeq::Any, Operation::Delete, None)?;
+        tracing::debug!("applied drop Table: {} {:?}", table_name, result);
+        Ok((Some(table_id), prev, result))
     }
 
     async fn sub_tree_upsert<'s, V, KS>(

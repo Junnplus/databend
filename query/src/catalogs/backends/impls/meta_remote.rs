@@ -32,6 +32,8 @@ use common_meta_types::GetTableReq;
 use common_meta_types::ListDatabaseReq;
 use common_meta_types::ListTableReq;
 use common_meta_types::MetaId;
+use common_meta_types::RenameTableReply;
+use common_meta_types::RenameTableReq;
 use common_meta_types::TableIdent;
 use common_meta_types::TableInfo;
 use common_meta_types::TableMeta;
@@ -105,6 +107,11 @@ impl MetaApi for MetaRemote {
 
     async fn drop_table(&self, req: DropTableReq) -> Result<DropTableReply> {
         self.query_backend(move |cli| async move { cli.drop_table(req).await })
+            .await
+    }
+
+    async fn rename_table(&self, req: RenameTableReq) -> Result<RenameTableReply> {
+        self.query_backend(move |cli| async move { cli.rename_table(req).await })
             .await
     }
 

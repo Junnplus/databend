@@ -23,6 +23,7 @@ use common_meta_types::Cmd::CreateDatabase;
 use common_meta_types::Cmd::CreateTable;
 use common_meta_types::Cmd::DropDatabase;
 use common_meta_types::Cmd::DropTable;
+use common_meta_types::Cmd::RenameTable;
 use common_meta_types::Cmd::UpsertTableOptions;
 use common_meta_types::CreateDatabaseReply;
 use common_meta_types::CreateDatabaseReq;
@@ -40,6 +41,8 @@ use common_meta_types::ListDatabaseReq;
 use common_meta_types::ListTableReq;
 use common_meta_types::LogEntry;
 use common_meta_types::OkOrExist;
+use common_meta_types::RenameTableReply;
+use common_meta_types::RenameTableReq;
 use common_meta_types::TableIdent;
 use common_meta_types::TableInfo;
 use common_meta_types::TableMeta;
@@ -215,6 +218,36 @@ impl RequestHandler<DropTableReq> for ActionHandler {
                 table_name
             )))
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl RequestHandler<RenameTableReq> for ActionHandler {
+    async fn handle(&self, req: RenameTableReq) -> common_exception::Result<RenameTableReply> {
+        let tenant = req.tenant;
+        let db_name = &req.db;
+        let table_name = &req.table_name;
+        let new_table_name = &req.new_table_name;
+
+        let cr = LogEntry {
+            txid: None,
+            cmd: RenameTable {
+                tenant,
+                db_name: db_name.clone(),
+                table_name: table_name.clone(),
+                new_table_name: new_table_name.clone(),
+            },
+        };
+
+        let res = self
+            .meta_node
+            .write(cr)
+            .await
+            .map_err(|e| ErrorCode::MetaNodeInternalError(e.to_string()))?;
+
+        let mut ch: Change<TableMeta> = res.try_into().unwrap();
+        let table_id = ch.ident.take().unwrap();
+        Ok(RenameTableReply { table_id })
     }
 }
 

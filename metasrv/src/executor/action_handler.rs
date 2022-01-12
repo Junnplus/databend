@@ -83,6 +83,10 @@ impl ActionHandler {
                 let r = self.handle(a).await.map_err(SerializedError::from);
                 RaftReply::from(r)
             }
+            MetaGrpcWriteReq::RenameTable(a) => {
+                let r = self.handle(a).await.map_err(SerializedError::from);
+                RaftReply::from(r)
+            }
         }
     }
 
