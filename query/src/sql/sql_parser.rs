@@ -196,6 +196,10 @@ impl<'a> DfParser<'a> {
                         self.parser.next_token();
                         self.parse_copy()
                     }
+                    Keyword::RENAME => {
+                        self.parser.next_token();
+                        self.parse_rename()
+                    }
                     Keyword::NoKeyword => match w.value.to_uppercase().as_str() {
                         // Use database
                         "USE" => self.parse_use_database(),
@@ -306,6 +310,16 @@ impl<'a> DfParser<'a> {
                 _ => self.expected("drop statement", Token::Word(w)),
             },
             unexpected => self.expected("drop statement", unexpected),
+        }
+    }
+
+    fn parse_rename(&mut self) -> Result<DfStatement, ParserError> {
+        match self.parser.next_token() {
+            Token::Word(w) => match w.keyword {
+                Keyword::TABLE => self.parse_rename_table(),
+                _ => self.expected("rename statement", Token::Word(w)),
+            },
+            unexpected => self.expected("rename statement", unexpected),
         }
     }
 

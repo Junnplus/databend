@@ -31,6 +31,7 @@ use crate::LimitPlan;
 use crate::PlanNode;
 use crate::ProjectionPlan;
 use crate::ReadDataSourcePlan;
+use crate::RenameTablePlan;
 use crate::SortPlan;
 use crate::StagePlan;
 use crate::SubQueriesSetPlan;
@@ -74,6 +75,7 @@ impl<'a> fmt::Display for PlanNodeIndentFormatDisplay<'a> {
             PlanNode::DropDatabase(plan) => Self::format_drop_database(f, plan),
             PlanNode::CreateTable(plan) => Self::format_create_table(f, plan),
             PlanNode::DropTable(plan) => Self::format_drop_table(f, plan),
+            PlanNode::RenameTable(plan) => Self::format_rename_table(f, plan),
             PlanNode::CreateRole(plan) => Self::format_create_role(f, plan),
             PlanNode::DropRole(plan) => Self::format_drop_role(f, plan),
             PlanNode::Copy(plan) => Self::format_copy(f, plan),
@@ -299,6 +301,14 @@ impl<'a> PlanNodeIndentFormatDisplay<'a> {
     fn format_drop_table(f: &mut Formatter, plan: &DropTablePlan) -> fmt::Result {
         write!(f, "Drop table {:}.{:},", plan.db, plan.table)?;
         write!(f, " if_exists:{:}", plan.if_exists)
+    }
+
+    fn format_rename_table(f: &mut Formatter, plan: &RenameTablePlan) -> fmt::Result {
+        write!(
+            f,
+            "Rename table {:}.{:} to {:}.{:}",
+            plan.db, plan.table_name, plan.new_db, plan.new_table_name
+        )
     }
 
     fn format_copy(f: &mut Formatter, plan: &CopyPlan) -> fmt::Result {

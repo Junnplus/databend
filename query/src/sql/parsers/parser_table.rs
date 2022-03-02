@@ -28,6 +28,7 @@ use crate::sql::statements::DfCreateTable;
 use crate::sql::statements::DfDescribeTable;
 use crate::sql::statements::DfDropTable;
 use crate::sql::statements::DfQueryStatement;
+use crate::sql::statements::DfRenameTable;
 use crate::sql::statements::DfShowCreateTable;
 use crate::sql::statements::DfTruncateTable;
 use crate::sql::DfParser;
@@ -200,5 +201,15 @@ impl<'a> DfParser<'a> {
 
         self.parser.expect_token(&Token::Eq)?;
         Ok(self.parser.next_token().to_string())
+    }
+
+    pub(crate) fn parse_rename_table(&mut self) -> Result<DfStatement, ParserError> {
+        let table_name = self.parser.parse_object_name()?;
+        self.parser.expect_keyword(Keyword::TO)?;
+        let new_table_name = self.parser.parse_object_name()?;
+        Ok(DfStatement::RenameTable(DfRenameTable {
+            name: table_name,
+            new_name: new_table_name,
+        }))
     }
 }
