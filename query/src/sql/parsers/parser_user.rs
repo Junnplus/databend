@@ -287,8 +287,7 @@ impl<'a> DfParser<'a> {
                     Keyword::INSERT => privileges.set_privilege(UserPrivilegeType::Insert),
                     Keyword::UPDATE => privileges.set_privilege(UserPrivilegeType::Update),
                     Keyword::DELETE => privileges.set_privilege(UserPrivilegeType::Delete),
-                    // TODO: uncomment this after sqlparser-rs accepts the SUPER keyword
-                    // Keyword::SUPER => privileges.set_privilege(UserPrivilegeType::Super)
+                    Keyword::SUPER => privileges.set_privilege(UserPrivilegeType::Super),
                     Keyword::GRANT => privileges.set_privilege(UserPrivilegeType::Grant),
                     Keyword::ALL => {
                         privileges.set_all_privileges();
