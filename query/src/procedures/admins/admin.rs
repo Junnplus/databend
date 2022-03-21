@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::procedures::admins::bootstrap_tenant::BootstrapTenantProcedure;
 use crate::procedures::admins::reload_config::ReloadConfigProcedure;
 use crate::procedures::admins::CreateWarehouseMetaProcedure;
 use crate::procedures::admins::DropWarehouseMetaProcedure;
@@ -42,5 +43,6 @@ impl AdminProcedure {
             DropWarehouseMetaProcedure::desc(),
         );
         factory.register("admin$reload_config", ReloadConfigProcedure::desc());
+        factory.register("admin$bootstrap_tenant", BootstrapTenantProcedure::desc());
     }
 }

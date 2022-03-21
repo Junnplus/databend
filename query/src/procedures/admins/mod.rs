@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod admin;
+pub mod bootstrap_tenant;
 pub mod reload_config;
 mod warehouse_metadata;
 
