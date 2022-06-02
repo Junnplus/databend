@@ -39,6 +39,7 @@ mod interpreter_show_settings;
 mod interpreter_show_stages;
 mod interpreter_show_tab_stat;
 mod interpreter_show_tables;
+mod interpreter_show_tenant_quota;
 mod interpreter_show_users;
 mod interpreter_table_create;
 mod interpreter_table_describe;

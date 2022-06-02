@@ -1,5 +1,3 @@
-// Copyright 2021 Datafuse Labs.
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -39,6 +37,7 @@ use crate::sql::statements::DfShowEngines;
 use crate::sql::statements::DfShowMetrics;
 use crate::sql::statements::DfShowProcessList;
 use crate::sql::statements::DfShowSettings;
+use crate::sql::statements::DfShowTenantQuota;
 use crate::sql::statements::DfShowUsers;
 use crate::sql::DfHint;
 use crate::sql::DfStatement;
@@ -404,6 +403,8 @@ impl<'a> DfParser<'a> {
             Ok(DfStatement::ShowEngines(DfShowEngines))
         } else if self.consume_token("STAGES") {
             self.parse_show_stages()
+        } else if self.consume_token("TENANTQUOTA") {
+            Ok(DfStatement::ShowTenantQuota(DfShowTenantQuota))
         } else {
             self.expected("show statement", self.parser.peek_token())
         }

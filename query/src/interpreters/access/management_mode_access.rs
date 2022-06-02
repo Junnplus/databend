@@ -47,6 +47,7 @@ impl ManagementModeAccess {
                 | PlanNode::Show(ShowPlan::ShowUsers(_))
                 | PlanNode::Show(ShowPlan::ShowRoles(_))
                 | PlanNode::Show(ShowPlan::ShowStages(_))
+                | PlanNode::Show(ShowPlan::ShowTenantQuota(_))
 
                 // Database.
                 | PlanNode::CreateDatabase(_)

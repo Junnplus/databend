@@ -192,6 +192,7 @@ impl<'a> AnalyzableStatement for DfStatement<'a> {
             DfStatement::DropView(v) => v.analyze(ctx).await,
             DfStatement::ShowTabStat(v) => v.analyze(ctx).await,
             DfStatement::ShowStages(v) => v.analyze(ctx).await,
+            DfStatement::ShowTenantQuota(v) => v.analyze(ctx).await,
         }
     }
 }

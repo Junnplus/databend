@@ -69,6 +69,7 @@ use crate::interpreters::ShowRolesInterpreter;
 use crate::interpreters::ShowSettingsInterpreter;
 use crate::interpreters::ShowTabStatInterpreter;
 use crate::interpreters::ShowTablesInterpreter;
+use crate::interpreters::ShowTenantQuotaInterpreter;
 use crate::interpreters::ShowUsersInterpreter;
 use crate::interpreters::TruncateTableInterpreter;
 use crate::interpreters::UnDropTableInterpreter;
@@ -124,6 +125,9 @@ impl InterpreterFactory {
             }
             PlanNode::Show(ShowPlan::ShowStages(v)) => {
                 ShowStagesInterpreter::try_create(ctx_clone, v)
+            }
+            PlanNode::Show(ShowPlan::ShowTenantQuota(v)) => {
+                ShowTenantQuotaInterpreter::try_create(ctx_clone, v)
             }
 
             // Database related transforms.

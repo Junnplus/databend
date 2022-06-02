@@ -22,6 +22,7 @@ use databend_query::sql::statements::DfShowSettings;
 use databend_query::sql::statements::DfShowStages;
 use databend_query::sql::statements::DfShowTabStat;
 use databend_query::sql::statements::DfShowTables;
+use databend_query::sql::statements::DfShowTenantQuota;
 use databend_query::sql::*;
 use sqlparser::ast::*;
 
@@ -392,6 +393,15 @@ fn show_stage_test() -> Result<()> {
         DfStatement::ShowStages(DfShowStages::create(DfShowKind::All)),
     )?;
 
+    Ok(())
+}
+
+#[test]
+fn show_tenant_quota_test() -> Result<()> {
+    expect_parse_ok(
+        "SHOW TENANTQUOTA",
+        DfStatement::ShowTenantQuota(DfShowTenantQuota),
+    )?;
     Ok(())
 }
 

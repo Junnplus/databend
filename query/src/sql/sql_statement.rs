@@ -30,6 +30,7 @@ use super::statements::DfGrantRoleStatement;
 use super::statements::DfList;
 use super::statements::DfRevokeRoleStatement;
 use super::statements::DfShowStages;
+use super::statements::DfShowTenantQuota;
 use crate::sql::statements::DfAlterDatabase;
 use crate::sql::statements::DfAlterTable;
 use crate::sql::statements::DfAlterUDF;
@@ -118,6 +119,9 @@ pub enum DfStatement<'a> {
 
     // Functions
     ShowFunctions(DfShowFunctions),
+
+    // TenantQuota
+    ShowTenantQuota(DfShowTenantQuota),
 
     // Kill
     KillStatement(DfKillStatement),

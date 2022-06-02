@@ -28,6 +28,7 @@ use crate::ShowRolesPlan;
 use crate::ShowSettingsPlan;
 use crate::ShowStagesPlan;
 use crate::ShowTablesPlan;
+use crate::ShowTenantQuotaPlan;
 use crate::ShowUsersPlan;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -55,6 +56,7 @@ pub enum ShowPlan {
     ShowRoles(ShowRolesPlan),
     ShowTabStat(ShowTabStatPlan),
     ShowStages(ShowStagesPlan),
+    ShowTenantQuota(ShowTenantQuotaPlan),
 }
 
 impl ShowPlan {
