@@ -38,15 +38,7 @@ impl ManagementModeAccess {
                 PlanNode::Empty(_)
 
                 // Show.
-                | PlanNode::Show(ShowPlan::ShowDatabases(_))
-                | PlanNode::Show(ShowPlan::ShowTables(_))
-                | PlanNode::Show(ShowPlan::ShowEngines(_))
-                | PlanNode::Show(ShowPlan::ShowFunctions(_))
-                | PlanNode::Show(ShowPlan::ShowGrants(_))
-                | PlanNode::Show(ShowPlan::ShowSettings(_))
-                | PlanNode::Show(ShowPlan::ShowUsers(_))
-                | PlanNode::Show(ShowPlan::ShowRoles(_))
-                | PlanNode::Show(ShowPlan::ShowStages)
+                | PlanNode::Show(_)
 
                 // Database.
                 | PlanNode::CreateDatabase(_)

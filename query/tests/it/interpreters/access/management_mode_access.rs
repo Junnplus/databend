@@ -69,6 +69,16 @@ async fn test_management_mode_access() -> Result<()> {
                     query: "SHOW USERS",
                     is_err: false,
                 },
+                Test {
+                    name: "show-processlist",
+                    query: "SHOW PROCESSLIST",
+                    is_err: false,
+                },
+                Test {
+                    name: "show-metrics",
+                    query: "SHOW METRICS",
+                    is_err: false,
+                },
             ],
         },
         TestGroup {
@@ -132,16 +142,6 @@ async fn test_management_mode_access() -> Result<()> {
                 Test {
                     name: "select-denied",
                     query: "SELECT * FROM t1",
-                    is_err: true,
-                },
-                Test {
-                    name: "show-processlist-denied",
-                    query: "SHOW PROCESSLIST",
-                    is_err: true,
-                },
-                Test {
-                    name: "show-metrics-denied",
-                    query: "SHOW METRICS",
                     is_err: true,
                 },
             ],
